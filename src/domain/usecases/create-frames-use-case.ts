@@ -1,9 +1,10 @@
 import fs from "fs";
 import { spawn } from "child_process";
-import { IUseCase } from "@/domain/ports/IUseCase.js";
+import { IUseCase } from "../ports/IUseCase.js";
 import path from "path";
 import archiver from "archiver";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { IRepoFiles } from "../ports/IRepoFiles.js";
 
 export class CreateFramesUseCase implements IUseCase<{ inputPath: string , outputDir: string }, string> {
 

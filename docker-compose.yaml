@@ -1,28 +1,16 @@
 services:
-  db:
-    image: postgres:15
-    container_name: db_ms_processadorvideo
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: processadorvideo
+  backendprincipal:
+    build: .
+    container_name: worker_api
     ports:
-      - "5433:5432"
+      - "3000:3000"
+    env_file:
+      - .env
     volumes:
-      - db_data_processadorvideo:/var/lib/postgresql/data
+      - D:/VIDEOS:/data/videos
     networks:
-      - app-network
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-
-volumes:
-  db_data_processadorvideo:
+      - app-network-externa
 
 networks:
-  app-network:
-    driver: bridge  
+  app-network-externa:
+    external: true

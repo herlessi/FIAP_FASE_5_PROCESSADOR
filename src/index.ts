@@ -20,11 +20,11 @@
 // 	console.log(`Servidor iniciado na porta ${port}`);
 // });
 
-// import { ProcessadorController } from "@/infra/controllers/ProcessadorController";
-import { ProcessadorControllerAux } from "@/infra/controllers/ProcessadorControllerAux";
-import { ProcessadorRepo } from "@/infra/gateways/PrismaPostgres/ProcessadorRepo.js";
-import { RabbitMQ } from "@/infra/gateways/message-queue/rabbitmq";
-import { S3BucketRepo } from "@/infra/gateways/repository-files/s3-bucket-repo.js";
+// import { ProcessadorController } from "./infra/controllers/ProcessadorController";
+import { ProcessadorControllerAux } from "./infra/controllers/ProcessadorControllerAux.js";
+import { ProcessadorRepo } from "./infra/gateways/PrismaPostgres/ProcessadorRepo.js";
+import { RabbitMQ } from "./infra/gateways/message-queue/rabbitmq.js";
+import { S3BucketRepo } from "./infra/gateways/repository-files/s3-bucket-repo.js";
 import { S3Client } from "@aws-sdk/client-s3";
 
 const messageQueue = new RabbitMQ();

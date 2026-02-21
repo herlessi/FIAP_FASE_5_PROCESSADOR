@@ -6,9 +6,10 @@ import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import archiver from "archiver";
+import { IUseCase } from "../ports/IUseCase.js";
 
-export class ProcessarVideoUseCase implements IUseCase<ProcessarVideoInput, ProcessarVideoOutput> {
-    constructor(private processadorRepo: IProcessadorDB) {}
+export class ProcessarVideoUseCase implements IUseCase<any, any> {
+    constructor() {}
 
     // 👇 Aqui está o s3
     private s3 = new S3Client({
@@ -19,10 +20,10 @@ export class ProcessarVideoUseCase implements IUseCase<ProcessarVideoInput, Proc
     },
     });
 
-    async execute(id: string): Promise<ProcessarVideoOutput> { 
+    async execute(id: string): Promise<any> { 
         console.log("Processando vídeo dentro do use case com ID:", id);
         // await this.downloadVideo(`uploads/${id}.mp4`, `/tmp/${id}.mp4`);
-        const videoPathDownload = path.join(process.env.VIDEO_DOWNLOAD_PATH!, `${id}\\${id}.mp4`);
+        const videoPathDownload = path.join(process.env.VIDEO_DOWNLOAD_PATH!,id, `${id}.mp4`);
         await this.downloadVideo(`uploads/${id}`, videoPathDownload);
 
         if (!fs.existsSync(videoPathDownload)) {

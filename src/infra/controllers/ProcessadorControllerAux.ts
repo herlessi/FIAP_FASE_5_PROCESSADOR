@@ -1,9 +1,9 @@
-import { IRepoFiles } from "@/domain/ports/IRepoFiles.js";
+import { IRepoFiles } from "../../domain/ports/IRepoFiles.js";
 import { IProcessadorDB } from "../../domain/ports/IProcessadorDB.js";
 import { ProcessarVideoUseCase } from "../../domain/usecases/ProcessarVideoUseCase.js";
-import { IMessageQueue } from "@/domain/ports/IMessageQueue.js";
-import { DownloadVideosUseCase } from "@/domain/usecases/download-videos-use-case.js";
-import { CreateFramesUseCase } from "@/domain/usecases/create-frames-use-case.js";
+import { IMessageQueue } from "../../domain/ports/IMessageQueue.js";
+import { DownloadVideosUseCase } from "../../domain/usecases/download-videos-use-case.js";
+import { CreateFramesUseCase } from "../../domain/usecases/create-frames-use-case.js";
 import path from "path";
 
 export class ProcessadorControllerAux {
@@ -13,7 +13,7 @@ export class ProcessadorControllerAux {
                 private repoFiles: IRepoFiles
     ) {}
 
-    processadorVideoUseCase = new ProcessarVideoUseCase(this.processadorRepo)
+    processadorVideoUseCase = new ProcessarVideoUseCase()
 
     
 

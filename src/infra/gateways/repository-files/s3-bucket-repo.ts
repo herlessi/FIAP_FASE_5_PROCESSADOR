@@ -5,7 +5,7 @@ import path from "path";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 import { pipeline } from "stream/promises";
-import { IRepoFiles } from "@/domain/ports/IRepoFiles";
+import { IRepoFiles } from "../../../domain/ports/IRepoFiles.js";
 
 export class S3BucketRepo implements IRepoFiles {
  
@@ -30,7 +30,7 @@ export class S3BucketRepo implements IRepoFiles {
             );
     }
 
-    async uploadFile(filePath: string, bucketName: string, key: string) {
+    async uploadFile(filePath: string, bucketName: string, key: string): Promise<string> {
         const fileStream = fs.createReadStream(filePath);
 
         const command = new PutObjectCommand({
@@ -42,6 +42,8 @@ export class S3BucketRepo implements IRepoFiles {
 
         await this.s3.send(command);
         console.log(`Arquivo ${key} enviado para o bucket ${bucketName}!`);
+
+        return "uploaded"
             
         
     }

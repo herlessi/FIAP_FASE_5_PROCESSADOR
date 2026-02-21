@@ -1,5 +1,6 @@
-import { IMessageQueue } from "../../../domain/ports/IMessageQueue";
+import { IMessageQueue } from "../../../domain/ports/IMessageQueue.js";
 import amqp from 'amqplib';
+import "dotenv/config";
 
 export class RabbitMQ implements IMessageQueue {
 
@@ -7,8 +8,10 @@ export class RabbitMQ implements IMessageQueue {
 
         try {
 
+            
             // URL do RabbitMQ (padrão: guest/guest em localhost)
-            const connection = await amqp.connect('amqp://guest:guest@localhost:5672');
+            // const connection = await amqp.connect('amqp://guest:guest@localhost:5672');
+            const connection = await amqp.connect(process.env.RABBIT_MQ_URL || 'amqp://guest:guest@localhost:5672');
             const channel = await connection.createChannel();
 
             await channel.assertQueue(queue, { durable: true }); // garante persistência
@@ -29,7 +32,8 @@ export class RabbitMQ implements IMessageQueue {
 
 
     async receiveMessage(callback: (message: string, channel: amqp.Channel, msg: amqp.ConsumeMessage) => void, queue: string): Promise<void> {
-        const connection = await amqp.connect('amqp://guest:guest@localhost:5672');
+        // const connection = await amqp.connect('amqp://guest:guest@localhost:5672');
+        const connection = await amqp.connect(process.env.RABBIT_MQ_URL || 'amqp://guest:guest@localhost:5672');
         const channel = await connection.createChannel();
 
         await channel.assertQueue(queue, { durable: true });
@@ -38,7 +42,7 @@ export class RabbitMQ implements IMessageQueue {
 
         console.log("Aguardando mensagens na fila", queue);
 
-        channel.consume(queue, msg => {
+        channel.consume(queue, (msg: amqp.ConsumeMessage | null) => {
             if (msg !== null) {
             const content = msg.content.toString();
             callback(content, channel, msg); // passa o canal e a mensagem para o callback
