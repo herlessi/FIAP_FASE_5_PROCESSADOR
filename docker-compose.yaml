@@ -1,9 +1,12 @@
+name: micro-servico-processador-video
+
 services:
   backendprincipal:
     build: .
     container_name: worker_api
     ports:
       - "3000:3000"
+      - "9464:9464"
     env_file:
       - .env
     volumes:

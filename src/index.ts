@@ -26,6 +26,7 @@ import { ProcessadorRepo } from "./infra/gateways/PrismaPostgres/ProcessadorRepo
 import { RabbitMQ } from "./infra/gateways/message-queue/rabbitmq.js";
 import { S3BucketRepo } from "./infra/gateways/repository-files/s3-bucket-repo.js";
 import { S3Client } from "@aws-sdk/client-s3";
+import { startMetricsServer } from "./infra/observability/metrics.js";
 
 const messageQueue = new RabbitMQ();
 const repo = new ProcessadorRepo();
@@ -40,4 +41,5 @@ const s3 = new S3Client({
 const s3repo = new S3BucketRepo(s3);
 // const processadorController = new ProcessadorController(repo, messageQueue);
 const processadorController = new ProcessadorControllerAux(repo, messageQueue, s3repo);
+startMetricsServer();
 processadorController.conectarFila("video_to_process_queue");
