@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: processadorvideo-config
-  namespace: worker
+  namespace: processamentovideo
 data:
   METRICS_PORT: "9464"
   AWS_REGION: "us-east-1"
