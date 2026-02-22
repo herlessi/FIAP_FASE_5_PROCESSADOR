@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: processadorvideo-config
+  namespace: processamentovideo
+data:
+  METRICS_PORT: "9464"
+  AWS_REGION: "us-east-1"
+  AWS_BUCKET: "fiap-fase-5"
+  VIDEO_DOWNLOAD_PATH: "/data/videos/download"
+  VIDEO_FRAMES_PATH: "/data/videos/frames"
+  FRAME_RATE: "1/5"
+  RABBIT_MQ_URL: "amqp://guest:guest@rabbitmq.processamentovideo.svc.cluster.local:5672"

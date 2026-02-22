@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: processadorvideo
+  namespace: processamentovideo
+  labels:
+    app: processadorvideo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: processadorvideo
+  template:
+    metadata:
+      labels:
+        app: processadorvideo
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9464"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: processadorvideo
+          # image: processadorvideo:latest
+          # imagePullPolicy: IfNotPresent
+          image: micro-servico-processador-video-backendprincipal:latest
+          imagePullPolicy: Never
+          ports:
+            - name: metrics
+              containerPort: 9464
+          envFrom:
+            - configMapRef:
+                name: processadorvideo-config
+            - secretRef:
+                name: processadorvideo-secrets
+          volumeMounts:
+            - name: videos
+              mountPath: /data/videos
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: videos
+          persistentVolumeClaim:
+            claimName: processadorvideo-videos-pvc
