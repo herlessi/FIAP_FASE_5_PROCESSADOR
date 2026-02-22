@@ -4,7 +4,7 @@ Este diretório contém os manifests para executar o worker `processadorvideo` n
 
 ## Arquivos
 
-- `namespace.yaml`: namespace `processamentovideo`
+- `namespace.yaml`: namespace `worker`
 - `configmap.yaml`: variáveis não sensíveis
 - `secret.yaml`: credenciais AWS (substituir antes de aplicar)
 - `pvc.yaml`: volume persistente para `/data/videos`
@@ -45,8 +45,8 @@ kubectl apply -k k8s
 ## 4) Verificar deployment
 
 ```bash
-kubectl get pods -n processamentovideo
-kubectl logs -f deploy/processadorvideo -n processamentovideo
+kubectl get pods -n worker
+kubectl logs -f deploy/processadorvideo -n worker
 ```
 
 ## 5) Verificar métricas
@@ -54,7 +54,7 @@ kubectl logs -f deploy/processadorvideo -n processamentovideo
 Port-forward para testar endpoint de métricas:
 
 ```bash
-kubectl port-forward svc/processadorvideo 9464:9464 -n processamentovideo
+kubectl port-forward svc/processadorvideo 9464:9464 -n worker
 ```
 
 Acesse: `http://localhost:9464/metrics`
@@ -62,6 +62,6 @@ Acesse: `http://localhost:9464/metrics`
 ## Observações
 
 - A comunicação de negócio com o backend principal ocorre somente via RabbitMQ.
-- O `RABBIT_MQ_URL` está configurado para `amqp://guest:guest@rabbitmq.processamentovideo.svc.cluster.local:5672`; garanta que o Service `rabbitmq` exista nesse namespace.
+- O worker roda no namespace `worker`, mas o `RABBIT_MQ_URL` aponta para `amqp://guest:guest@rabbitmq.processamentovideo.svc.cluster.local:5672`, permitindo comunicação com RabbitMQ no namespace `processamentovideo`.
 - O PVC depende de um `StorageClass` padrão no cluster.
 - Probes usam `GET /health` na porta `9464`.
