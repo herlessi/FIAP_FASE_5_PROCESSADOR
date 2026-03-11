@@ -1,7 +1,7 @@
 name: micro-servico-processador-video
 
 services:
-  backendprincipal:
+  worker:
     build: .
     container_name: worker_api
     ports:

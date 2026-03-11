@@ -1,0 +1,153 @@
+# ================================
+# PERSISTENT VOLUME CLAIM DOS VÍDEOS
+# ================================
+# Este PVC representa o armazenamento usado pelo worker
+# para ler/gravar arquivos de vídeo dentro do cluster.
+#
+# Em Docker Compose você montava:
+# D:/VIDEOS:/data/videos
+#
+# No Kubernetes, em vez de mapear diretamente uma pasta do host,
+# normalmente usamos um PVC, que abstrai o armazenamento.
+#
+# Esse volume pode ser usado para:
+# - vídeos recebidos para processamento
+# - arquivos temporários
+# - vídeos já processados
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+
+metadata:
+  name: processadorvideo-videos-pvc
+  namespace: video-processing
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+
+  resources:
+    requests:
+      storage: 10Gi
+
+  # Define qual StorageClass será usada para provisionar o volume
+  storageClassName: hostpath
+
+---
+# ================================
+# SERVICE DO PROCESSADOR DE VÍDEO
+# ================================
+# Este Service expõe portas do worker dentro do cluster Kubernetes.
+#
+# Normalmente um worker não precisa de Service se ele apenas consome
+# mensagens do RabbitMQ e não recebe chamadas de rede.
+#
+# Porém, como este serviço expõe a porta 9464 para métricas,
+# criar um Service pode ser útil para Prometheus fazer scrape.
+#
+# A porta 3000 só deve existir se o worker realmente expuser
+# uma API HTTP, endpoint de healthcheck ou debug.
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: processadorvideo
+  namespace: video-processing
+
+spec:
+  # Selector que conecta o Service aos Pods do worker
+  selector:
+    app: processadorvideo
+
+  ports:
+    # Porta da aplicação, caso exista algum endpoint HTTP
+    - name: http
+      port: 3000
+      targetPort: 3000
+
+    # Porta de métricas para Prometheus
+    - name: metrics
+      port: 9464
+      targetPort: 9464
+
+---
+# ================================
+# DEPLOYMENT DO PROCESSADOR DE VÍDEO
+# ================================
+# O Deployment gerencia o worker responsável pelo processamento
+# de vídeos.
+#
+# Esse tipo de recurso é ideal para aplicações stateless,
+# como workers e APIs.
+#
+# O Kubernetes será responsável por:
+# - criar o Pod
+# - recriar em caso de falha
+# - permitir escalabilidade horizontal
+#
+# Neste caso, o worker provavelmente consome mensagens do RabbitMQ,
+# processa vídeos e exporta métricas.
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: processadorvideo
+  namespace: video-processing
+
+spec:
+  # Número de instâncias do worker.
+  # Começamos com 1 para simplificar o ambiente.
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: processadorvideo
+
+  template:
+    metadata:
+      labels:
+        # Label usada pelo Service para encontrar este Pod
+        app: processadorvideo
+
+    spec:
+      containers:
+        - name: processadorvideo
+
+          # Imagem Docker do worker
+          image: processador-video:latest
+
+          # Em ambiente local, usa a imagem construída localmente
+          imagePullPolicy: Never
+
+          ports:
+            # Porta da aplicação, caso o worker exponha endpoint HTTP
+            - containerPort: 3000
+
+            # Porta de métricas para observabilidade
+            - containerPort: 9464
+
+          # ================================
+          # VARIÁVEIS DE AMBIENTE
+          # ================================
+          # Aqui definimos a configuração necessária para
+          # o worker se conectar aos outros serviços do cluster.
+          env:
+            # URL de conexão com o RabbitMQ
+            #
+            # O hostname "rabbitmq" funciona porque existe
+            # um Service com esse nome no mesmo namespace.
+            - name: RABBIT_MQ_URL
+              value: amqp://guest:guest@rabbitmq:5672
+
+          volumeMounts:
+            # Monta o volume de vídeos dentro do container
+            - name: videos-storage
+              mountPath: /data/videos
+
+      volumes:
+        # Conecta o volume ao PVC criado anteriormente
+        - name: videos-storage
+          persistentVolumeClaim:
+            claimName: processadorvideo-videos-pvc

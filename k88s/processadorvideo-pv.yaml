@@ -1,0 +1,43 @@
+# ================================
+# PERSISTENT VOLUME DO PROCESSADOR DE VÍDEO
+# ================================
+# Este PersistentVolume (PV) representa o armazenamento
+# físico/lógico disponível para o processador de vídeo.
+#
+# Como o provisionamento automático não está funcionando
+# no cluster local, vamos criar esse volume manualmente.
+#
+# Esse volume será usado pelo PVC:
+# processadorvideo-videos-pvc
+#
+# O worker montará esse volume no caminho:
+# /data/videos
+
+apiVersion: v1
+kind: PersistentVolume
+
+metadata:
+  # Nome do volume persistente no cluster
+  name: processadorvideo-pv
+
+spec:
+  # Capacidade do volume
+  capacity:
+    storage: 10Gi
+
+  # Modo de acesso:
+  # ReadWriteOnce = um único node pode montar o volume em modo leitura/escrita
+  accessModes:
+    - ReadWriteOnce
+
+  # Precisa ser igual ao storageClassName do PVC
+  storageClassName: hostpath
+
+  # Política de retenção:
+  # Retain preserva os dados mesmo se o PVC for removido
+  persistentVolumeReclaimPolicy: Retain
+
+  # hostPath aponta para um diretório no node do cluster
+  # Em ambiente local, isso é suficiente para estudo e desenvolvimento
+  hostPath:
+    path: /mnt/processadorvideo-videos
