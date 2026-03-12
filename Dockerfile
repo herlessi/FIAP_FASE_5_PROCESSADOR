@@ -7,13 +7,15 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml ./
 
-RUN npm ci
+RUN corepack enable && corepack prepare pnpm@10 --activate
+
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-RUN npm run build
+RUN pnpm run build
 
 EXPOSE 3000
 
