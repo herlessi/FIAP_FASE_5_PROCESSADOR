@@ -29,6 +29,12 @@ out/
 logs/
 *.log
 
+# Tests
+coverage/
+.nyc_output/
+test-results/
+junit.xml
+
 # OS
 Thumbs.db
 
