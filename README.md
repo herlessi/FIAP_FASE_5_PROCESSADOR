@@ -34,6 +34,10 @@ RabbitMQ -> Processador (Node/FFmpeg) -> AWS S3
 - Acesso a um broker RabbitMQ e a um bucket S3
 - Variáveis de ambiente configuradas (ver abaixo)
 
+## DIAGRAMA
+<img width="984" height="782" alt="image" src="https://github.com/user-attachments/assets/accf0c23-6de2-4fad-8660-4809cd24b122" />
+
+
 ## Variáveis de Ambiente
 | Nome | Descrição |
 | --- | --- |
