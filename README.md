@@ -1,178 +1,85 @@
-# Frontend VideoFlow
+# Micro Serviço Processador de Vídeo
 
-Aplicacao frontend para upload e acompanhamento de videos, com fluxo de processamento e atualizacao em tempo real via WebSocket.
+Serviço assíncrono responsável por baixar vídeos enviados para um bucket S3, extrair frames com FFmpeg e disponibilizar um pacote compactado em outro bucket. O fluxo é orquestrado por RabbitMQ e instrumentado com Prometheus.
 
-## Objetivo do projeto
+## Tecnologias Utilizadas
+- Node.js 20+ com TypeScript
+- RabbitMQ (amqplib) para mensageria
+- AWS S3 SDK v3 para armazenamento de objetos
+- FFmpeg para extração de frames
+- Archiver para compressão dos frames em `.zip`
+- Prometheus `prom-client` + endpoint HTTP para métricas
+- Jest + ts-jest para testes unitários
+- Docker e manifestos Kubernetes para implantação
 
-Este projeto implementa a interface web do VideoFlow, incluindo:
+## Arquitetura Resumida
+1. **Fila `video_to_process_queue`** recebe mensagens com o `id` do vídeo.
+2. **`ProcessadorControllerAux`** consome a fila e dispara dois casos de uso:
+   - `DownloadVideosUseCase` baixa o arquivo de `uploads/{id}` em S3 para `VIDEO_DOWNLOAD_PATH/<id>/<id>.mp4`.
+   - `CreateFramesUseCase` chama FFmpeg, gera frames em `VIDEO_FRAMES_PATH/<id>`, compacta (`.zip`) e envia para `frames_to_download/{id}.zip` no mesmo bucket.
+3. O serviço publica na fila `frames_ready_to_download_queue` um JSON com `{ id, urlToDownload }`.
+4. Métricas de fila, duração e sucesso/erro são expostas via `startMetricsServer()` em `/metrics` (Prometheus) e `/health`.
 
-- Tela de login (fluxo visual inicial).
-- Tela de videos com upload multiplo.
-- Indicacao de progresso de envio e processamento.
-- Listagem de videos processados com opcao de download.
-- Sincronizacao com backend via API REST e WebSocket.
-
-## Tecnologias utilizadas
-
-### Frontend
-
-- `React 19`
-- `TypeScript 5`
-- `Vite 7`
-- `React Router DOM 7`
-- `Axios`
-
-### Qualidade de codigo
-
-- `ESLint 9`
-- `typescript-eslint`
-- `eslint-plugin-react-hooks`
-- `eslint-plugin-react-refresh`
-
-### Infra e deploy
-
-- `Docker`
-- `Docker Compose`
-- `Nginx` (servindo build estatico em producao)
-
-## Como a aplicacao funciona
-
-### Rotas
-
-- `/`: tela de login.
-- `/videos`: tela principal de upload e acompanhamento dos videos.
-
-### Fluxo de upload
-
-1. Usuario seleciona um ou mais arquivos de video.
-2. Frontend solicita ao backend uma URL pre-assinada (`getPreSignedUrl`).
-3. Upload do arquivo e feito para armazenamento externo (ex.: S3) via `axios.put`.
-4. Frontend atualiza status do video no backend (`uploaded` ou `uploaded_failed`).
-5. Lista de videos e atualizada periodicamente e tambem por eventos WebSocket.
-
-### Atualizacao em tempo real
-
-- Ao receber eventos no WebSocket, o frontend refaz consultas da listagem para refletir alteracoes de status.
-- Se a conexao cair, ha tentativa de reconexao com backoff exponencial.
-
-## Pre-requisitos
-
-Instale os itens abaixo na maquina:
-
-- `Node.js 20+`
-- `npm 10+`
-- `Docker` e `Docker Compose` (opcional, para rodar em container)
-
-## Configuracao de ambiente
-
-Este projeto usa variaveis de ambiente do Vite.
-
-Crie um arquivo `.env` na raiz com:
-
-```env
-VITE_API_URL=http://localhost:3000
-VITE_WS_URL=ws://localhost:3000/ws
+```
+RabbitMQ -> Processador (Node/FFmpeg) -> AWS S3
+     ^                 |                 |
+     |                 v                 v
+ frames_ready   Metrics (/metrics)   Arquivos compactados
 ```
 
-Observacoes:
+## Pré-requisitos
+- Node.js 20 ou superior
+- pnpm 9+ (ou npm/yarn, ajustando comandos)
+- FFmpeg instalado e disponível no `PATH`
+- Acesso a um broker RabbitMQ e a um bucket S3
+- Variáveis de ambiente configuradas (ver abaixo)
 
-- `VITE_API_URL`: base da API REST usada pelo `axios`.
-- `VITE_WS_URL`: endpoint WebSocket para notificacoes de processamento.
-- Se `VITE_WS_URL` nao for definido, o frontend tenta derivar automaticamente a URL a partir de `VITE_API_URL`.
+## Variáveis de Ambiente
+| Nome | Descrição |
+| --- | --- |
+| `AWS_REGION` | Região do bucket S3 |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | Credenciais com permissão de leitura/gravação |
+| `AWS_BUCKET` | Nome do bucket usado para vídeos e zips |
+| `VIDEO_DOWNLOAD_PATH` | Caminho local para salvar o `.mp4` baixado (ex.: `/tmp/videos`) |
+| `VIDEO_FRAMES_PATH` | Diretório local onde os frames temporários serão criados |
+| `FRAME_RATE` | Expressão FFmpeg (default `1/5`) |
+| `RABBIT_MQ_URL` | URL de conexão (ex.: `amqp://user:pass@host:5672`) |
+| `METRICS_PORT` | Porta HTTP para `/metrics` (default `9464`) |
 
-## Execucao local (desenvolvimento)
+> **Importante**: Os diretórios apontados por `VIDEO_DOWNLOAD_PATH` e `VIDEO_FRAMES_PATH` precisam ter espaço suficiente. Considere usar volumes persistentes (PVC/bind mount) e limpeza periódica dos arquivos `.mp4` e `.zip` após o upload.
 
-1. Instale dependencias:
-
+## Instalação e Execução
 ```bash
-npm install
+pnpm install          # instala dependências
+dev: pnpm dev         # watch com tsx + dotenv
+build: pnpm build     # compila para dist/
+start: pnpm start     # executa dist/index.js
 ```
 
-2. Rode o servidor de desenvolvimento:
+Durante o desenvolvimento o serviço já inicia o consumidor da fila e o servidor de métricas.
 
+## Testes
 ```bash
-npm run dev
+pnpm test            # executa Jest
+pnpm run test:coverage
 ```
+Os testes cobrem os casos de uso principais (`download-videos-use-case`, `create-frames-use-case`, gateways RabbitMQ/S3 e métricas).
 
-3. Acesse no navegador:
+## Observabilidade
+- `/metrics`: expõe os contadores e histogramas registrados em `prom-client`.
+- `/health`: resposta JSON simples para checagens de liveness.
+- Métricas principais: `processador_video_messages_received_total`, `processador_video_process_success_total`, `processador_video_process_failure_total{stage="download_video|create_frames"}`, `processador_video_process_duration_seconds`.
 
-```text
-http://localhost:5173
-```
+## Containerização e Deploy
+- `Dockerfile` e `docker-compose.yaml` permitem subir o serviço localmente junto com dependências.
+- Pasta `k8s/` contém manifestos para namespace, configMap, secret, Deployment, Service, HPA, PVC e Kustomize. Ajuste as variáveis e volumes para apontarem para seus recursos reais.
 
-## Build de producao
+## Fluxo de Trabalho Sugerido
+1. Enviar mensagem para `video_to_process_queue` com o ID do vídeo previamente carregado em `uploads/{id}` dentro do bucket.
+2. Aguardar o log de sucesso ou acompanhar métricas.
+3. Consumir `frames_ready_to_download_queue` para obter a URL assinada do ZIP de frames.
 
-Gerar build:
-
-```bash
-npm run build
-```
-
-Visualizar build localmente:
-
-```bash
-npm run preview
-```
-
-## Executando com Docker
-
-Subir o frontend com Docker Compose:
-
-```bash
-docker compose up -d
-```
-
-Acesso:
-
-```text
-http://localhost:8080
-```
-
-### Detalhes do container
-
-- Estagio 1: build com `node:20-alpine`.
-- Estagio 2: runtime com `nginx:1.27-alpine`.
-- Configuracao de `try_files` no Nginx para suportar rotas SPA do React Router.
-- Assets em `/assets` com cache de longa duracao.
-
-## Scripts disponiveis
-
-- `npm run dev`: inicia ambiente de desenvolvimento com Vite.
-- `npm run build`: executa `tsc -b` e gera build de producao via Vite.
-- `npm run preview`: publica localmente a build gerada.
-- `npm run lint`: executa validacoes de lint no projeto.
-
-## Estrutura principal do projeto
-
-```text
-src/
-	components/
-		AppLayout/
-	pages/
-		Login/
-		Videos/
-	routes/
-	services/
-	main.tsx
-	App.tsx
-```
-
-- `src/pages/Login`: tela de autenticacao (fluxo visual atual).
-- `src/pages/Videos`: upload, progresso, paginacao e download.
-- `src/services/api.ts`: cliente `axios` com `VITE_API_URL`.
-- `src/routes/index.tsx`: definicao das rotas da aplicacao.
-- `src/components/AppLayout`: layout base da area logada.
-
-## Pontos de atencao
-
-- O login atual e de navegacao local (sem autenticacao real no backend).
-- O `userId` do upload esta fixo no codigo e pode ser externalizado quando houver fluxo de autenticacao completo.
-- Recomenda-se criar um `.env.example` para padronizar configuracao entre ambientes.
-
-## Melhorias futuras sugeridas
-
-- Integrar autenticacao real com JWT/sessao.
-- Mover `userId` para contexto de usuario autenticado.
-- Adicionar testes (unitarios e integracao).
-- Configurar pipeline CI para lint e build automaticos.
-
+## Próximos Passos
+- Implementar limpeza automática dos `.mp4` e `.zip` após o upload para evitar erros `ENOSPC`.
+- Completar `ProcessadorRepo` com operações reais usando Prisma/Postgres.
+- Expandir testes cobrindo integração com RabbitMQ e S3 usando mocks.
